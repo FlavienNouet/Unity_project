@@ -1,0 +1,45 @@
+# Unity generated folders
+Library/
+Temp/
+Obj/
+Logs/
+UserSettings/
+MemoryCaptures/
+
+# Build outputs
+Build/
+Builds/
+*.apk
+*.aab
+*.unitypackage
+
+# Unity cache and metadata noise
+*.csproj
+*.sln
+*.slnx
+*.pidb
+*.booproj
+*.user
+*.userprefs
+*.tmp
+*.log
+*.stackdump
+*.suo
+*.tmpuser
+*.opendb
+*.VC.db
+*.pdb
+
+# Visual Studio / VS Code
+.vs/
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# JetBrains
+.idea/
+
+# Package manager caches
+node_modules/
