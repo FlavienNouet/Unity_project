@@ -1,78 +1,74 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
- 
+
 public class ReceiveDamage : MonoBehaviour
 {
- 
-//Maximum de points de vie
-public int maxHitPoint = 5;
- 
-//Points de vie actuels
-public int hitPoint = 0;
- 
-//Après avoir reçu un dégât :
-//La créature est invulnérable quelques instants
-public bool isInvulnerable;
- 
-//Temps d'invulnérabilité
-public float invulnerabiltyTime;
- 
-//Temps depuis le dernier dégât
-private float timeSinceLastHit = 0.0f;
- 
-private void Start()
+    public int maxHitPoint = 5;
+    public int hitPoint = 0;
+    
+    public bool isInvulnerable;
+    public float invulnerabiltyTime;
+    private float timeSinceLastHit = 0.0f;
+
+    private void Start()
+    {
+        hitPoint = maxHitPoint;
+        isInvulnerable = false;
+    }
+
+    // AJOUT : Cette fonction automatique d'Unity s'exécute quand le WaveSpawner fait un SetActive(true)
+    private void OnEnable()
+    {
+        hitPoint = maxHitPoint; // Redonne toute sa vie au zombie !
+        isInvulnerable = false;
+        timeSinceLastHit = 0.0f;
+    }
+
+    private void Update()
+    {
+        if (isInvulnerable)
+        {
+            timeSinceLastHit += Time.deltaTime;
+            if (timeSinceLastHit > invulnerabiltyTime)
+            {
+                timeSinceLastHit = 0.0f;
+                isInvulnerable = false;
+            }
+        }
+    }
+
+    public void GetDamage(int damage)
 {
-//Au début : Points de vie actuels = Maximum de points de vie
-hitPoint = maxHitPoint;
- 
-isInvulnerable = false;
+    if (isInvulnerable || hitPoint <= 0) return;
+
+    isInvulnerable = true;
+    hitPoint -= damage;
+
+    if (hitPoint > 0)
+    {
+        gameObject.SendMessage("TakeDamage", SendMessageOptions.DontRequireReceiver);
+    }
+    else
+    {
+        gameObject.SendMessage("Defeated", SendMessageOptions.DontRequireReceiver);
+
+        // SÉCURITÉ : on vérifie que l'objet est bien actif avant de lancer la coroutine
+        if (gameObject.activeInHierarchy)
+        {
+            StartCoroutine(DisableAfterDelay(2.0f));
+        }
+        else
+        {
+            // L'objet a déjà été désactivé ailleurs, pas besoin de coroutine
+            gameObject.SetActive(false);
+        }
+    }
 }
- 
-private void Update()
-{
-//Si invulnérable
-if (isInvulnerable)
-{
-//Compte le temps depuis le dernier dégât
-//timeSinceLastHit = temps depuis le dernier dégât
-//Time.deltaTime = temps écoulé depuis la dernière frame
-timeSinceLastHit += Time.deltaTime;
- 
-if (timeSinceLastHit > invulnerabiltyTime)
-{
-//Le temps est écoulé, il n'est plus invulnérable
-timeSinceLastHit = 0.0f;
-isInvulnerable = false;
- 
-}
-}
-}
- 
-//Permet de recevoir des dommages
-public void GetDamage(int damage)
-{
-if (isInvulnerable)
-return;
- 
-isInvulnerable = true;
- 
-//Applique les dommages aux points de vies actuels
-hitPoint -= damage;
- 
-//S'il reste des points de vie
-if (hitPoint > 0)
-{
-//SendMessage appellera toutes les méthodes "TakeDamage" de ce GameObject
-//Exemple : "TakeDamage" est dans MonsterController
-gameObject.SendMessage("TakeDamage", SendMessageOptions.DontRequireReceiver);
-}
-//Sinon
-else
-{
-//SendMessage appellera toutes les méthodes "Defeated" de ce GameObject
-//Exemple : "Defeated" est dans MonsterController
-gameObject.SendMessage("Defeated", SendMessageOptions.DontRequireReceiver);
-}
-}
+
+    private IEnumerator DisableAfterDelay(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        gameObject.SetActive(false); // Désactive l'objet pour que le WaveSpawner comprenne qu'il est mort !
+    }
 }

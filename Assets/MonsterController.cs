@@ -13,27 +13,15 @@ public class MonsterController : MonoBehaviour
     //Agent de Navigation
     NavMeshAgent navMeshAgent;
  
- 
     //Composants
     Animator animator;
  
     //Actions possibles
- 
-    //Stand ou Idle = attendre
     const string STAND_STATE = "Stand";
- 
-    //Reçoit des dommages
     const string TAKE_DAMAGE_STATE = "Damage";
- 
-    //Est vaincu
     public const string DEFEATED_STATE = "Defeated";
- 
-    //Est en train de marcher
     public const string WALK_STATE = "Walk";
- 
-    //Attaque
     public const string ATTACK_STATE = "Attack";
- 
  
     //Mémorise l'action actuelle
     public string currentAction;
@@ -52,10 +40,22 @@ public class MonsterController : MonoBehaviour
         //Référence de Player
         player = FindObjectOfType<PlayerFPS>().gameObject;
     }
+
+    // AJOUT CONCRET : Se déclenche automatiquement quand le WaveSpawner réactive le zombie via le Pool
+    private void OnEnable()
+    {
+        // On remet le monstre dans son état initial pour la nouvelle vague
+        currentAction = STAND_STATE;
+        
+        // On s'assure que le NavMeshAgent est bien actif et prêt à se déplacer
+        if (navMeshAgent != null)
+        {
+            navMeshAgent.enabled = true;
+        }
+    }
  
     private void Update()
     {
- 
         //si la créature est défaite
         //Elle ne peut rien faire d'autres
         if (currentAction == DEFEATED_STATE)
@@ -64,10 +64,8 @@ public class MonsterController : MonoBehaviour
             return;
         }
  
- 
         //Si la créature reçoit des dommages:
         //Elle ne peut rien faire d'autres.
-        //Cela servira quand on améliorera ce script.
         if (currentAction == TAKE_DAMAGE_STATE)
         {
             navMeshAgent.ResetPath();
@@ -92,6 +90,7 @@ public class MonsterController : MonoBehaviour
                 }
                 if (currentAction == ATTACK_STATE)
                 {
+                    // Appelle la méthode corrigée ci-dessous
                     Attacking();
                     return;
                 }
@@ -100,104 +99,76 @@ public class MonsterController : MonoBehaviour
                 Stand();
                 return;
             }
- 
- 
- 
         }
     }
  
     //La créature attend
     private void Stand()
     {
-        //Réinitialise les paramètres de l'animator
         ResetAnimation();
-        //L'action est maintenant "Stand"
         currentAction = STAND_STATE;
-        //Le paramètre "Stand" de l'animator = true
         animator.SetBool("Stand", true);
     }
  
     public void TakeDamage()
     {
-        //Réinitialise les paramètres de l'animator
         ResetAnimation();
-        //L'action est maintenant "Damage"
         currentAction = TAKE_DAMAGE_STATE;
-        //Le paramètre "Damage" de l'animator = true
         animator.SetBool("Damage", true);
     }
  
     public void Defeated()
+{
+    ResetAnimation();
+    currentAction = DEFEATED_STATE;
+    animator.SetBool(DEFEATED_STATE, true);
+    
+    if (navMeshAgent != null)
     {
-        //Réinitialise les paramètres de l'animator
-        ResetAnimation();
-        //L'action est maintenant "Defeated"  
-        currentAction = DEFEATED_STATE;
-        //Le paramètre "Defeated" de l'animator = true
-        animator.SetBool(DEFEATED_STATE, true);
+        navMeshAgent.enabled = false;
     }
- 
+    // ⛔ Ne jamais mettre SetActive(false) ici !
+}
  
     //Permet de surveiller l'animation lorsque l'on prend un dégât
     private void TakingDamage()
     {
- 
         if (this.animator.GetCurrentAnimatorStateInfo(0).IsName(TAKE_DAMAGE_STATE))
         {
-            //Compte le temps de l'animation
-            //normalizedTime : temps écoulé nomralisé (de 0 à 1).
-            //Si normalizedTime = 0 => C'est le début.
-            //Si normalizedTime = 0.5 => C'est la moitié.
-            //Si normalizedTime = 1 => C'est la fin.
- 
- 
             float normalizedTime = this.animator.GetCurrentAnimatorStateInfo(0).normalizedTime;
- 
  
             //Fin de l'animation
             if (normalizedTime > 1)
             {
                 Stand();
             }
- 
         }
- 
     }
  
     private void Attacking()
     {
         if (this.animator.GetCurrentAnimatorStateInfo(0).IsName(ATTACK_STATE))
         {
-            //Compte le temps de l'animation
-            //normalizedTime : temps écoulé nomralisé (de 0 à 1).
-            //Si normalizedTime = 0 => C'est le début.
-            //Si normalizedTime = 0.5 => C'est la moitié.
-            //Si normalizedTime = 1 => C'est la fin.
+            // MODIFICATION CONCRÈTE : On retire le "% 1" pour que le temps dépasse réellement 1 à la fin
+            float normalizedTime = this.animator.GetCurrentAnimatorStateInfo(0).normalizedTime;
  
- 
- 
- 
-            float normalizedTime = this.animator.GetCurrentAnimatorStateInfo(0).normalizedTime % 1;
- 
- 
-            //Fin de l'animation
-            if (normalizedTime > 1)
+            //Fin de l'animation (normalizedTime > 1 signifie que l'animation est terminée à 100%)
+            if (normalizedTime > 1f)
             {
- 
                 meleeWeapon.StopAttack();
                 Stand();
                 return;
             }
  
             meleeWeapon.StartAttack();
- 
         }
     }
  
- 
     private bool MovingToTarget()
     {
- 
+        // Si le NavMeshAgent est désactivé (pendant la mort), on empêche le calcul
+        if (!navMeshAgent.enabled) return false;
+
         //Assigne la destination : le joueur
         navMeshAgent.SetDestination(player.transform.position);
  
@@ -205,48 +176,33 @@ public class MonsterController : MonoBehaviour
         if (navMeshAgent.remainingDistance == 0)
             return true;
  
- 
-        // navMeshAgent.remainingDistance = distance restante pour atteindre la cible (Player)
-        // navMeshAgent.stoppingDistance = à quelle distance de la cible l'IA doit s'arrêter 
-        // (exemple 2 m pour le corps à sorps) 
         if (navMeshAgent.remainingDistance > navMeshAgent.stoppingDistance)
         {
- 
             if (currentAction != WALK_STATE)
                 Walk();
- 
         }
         else
         {
             //Si arrivé à bonne distance, regarde vers le joueur
             RotateToTarget(player.transform);
- 
             return false;
         }
  
         return true;
     }
  
- 
     //Walk = Marcher
     private void Walk()
     {
-        //Réinitialise les paramètres de l'animator
         ResetAnimation();
-        //L'action est maintenant "Walk"
         currentAction = WALK_STATE;
-        //Le paramètre "Walk" de l'animator = true
         animator.SetBool(WALK_STATE, true);
     }
  
- 
     private void Attack()
     {
-        //Réinitialise les paramètres de l'animator
         ResetAnimation();
-        //L'action est maintenant "Attack"
         currentAction = ATTACK_STATE;
-        //Le paramètre "Attack" de l'animator = true
         animator.SetBool(ATTACK_STATE, true);
     }
  
@@ -267,5 +223,4 @@ public class MonsterController : MonoBehaviour
         animator.SetBool(WALK_STATE, false);
         animator.SetBool(ATTACK_STATE, false);
     }
- 
 }
